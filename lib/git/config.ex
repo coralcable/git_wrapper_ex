@@ -11,12 +11,13 @@ defmodule Git.Config do
   @type t :: %__MODULE__{
           binary: String.t(),
           working_dir: String.t() | nil,
+          worktree_dir: String.t() | nil,
           env: [{String.t(), String.t()}],
           timeout: pos_integer()
         }
 
   @enforce_keys [:binary]
-  defstruct [:binary, :working_dir, env: [], timeout: @default_timeout]
+  defstruct [:binary, :working_dir, :worktree_dir, env: [], timeout: @default_timeout]
 
   @doc """
   Creates a new `Git.Config` struct.
@@ -25,6 +26,7 @@ defmodule Git.Config do
 
     * `:binary` - path to the git executable (default: auto-detected)
     * `:working_dir` - working directory for git commands (default: `nil`, uses current directory)
+    * `:worktree_dir` - work-tree directory for git commands (default: `nil`, uses current directory)
     * `:env` - list of `{key, value}` tuples for environment variables (default: `[]`)
     * `:timeout` - command timeout in milliseconds (default: `#{@default_timeout}`)
 
@@ -46,6 +48,7 @@ defmodule Git.Config do
     %__MODULE__{
       binary: Keyword.get(opts, :binary, find_binary()),
       working_dir: Keyword.get(opts, :working_dir),
+      worktree_dir: Keyword.get(opts, :worktree_dir),
       env: Keyword.get(opts, :env, []),
       timeout: Keyword.get(opts, :timeout, @default_timeout)
     }
@@ -57,7 +60,10 @@ defmodule Git.Config do
   Git does not require any global flags, so this returns an empty list.
   """
   @spec base_args(t()) :: [String.t()]
-  def base_args(%__MODULE__{}), do: []
+  def base_args(%__MODULE__{worktree_dir: nil}), do: []
+
+  def base_args(%__MODULE__{working_dir: wd, worktree_dir: wt}),
+    do: ~w[--git-dir=#{wd} --work-tree=#{wt}]
 
   @doc """
   Builds the options keyword list for `System.cmd/3`.
